@@ -1,0 +1,6 @@
+[submodule "engines/sophon"]
+	path = engines/sophon
+	url = https://github.com/Escartem/SophonDownloader
+[submodule "engines/wuwa"]
+	path = engines/wuwa
+	url = https://github.com/yuhkix/wuwa-downloader
