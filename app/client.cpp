@@ -4,12 +4,11 @@
 #include "internal/ipc.hpp"
 #include "include/wrapper/cef_helpers.h"
 #include "include/cef_app.h"
-#include "include/views/cef_window.h"
 #include <SDL3/SDL.h>
 
 // Global variables
 extern SDL_Window* g_sdl_window;
-extern CefRefPtr<CefWindow> g_cef_window;
+extern CefRefPtr<CefBrowser> g_browser;
 
 // CloseBrowserTask implementation
 CloseBrowserTask::CloseBrowserTask(CefRefPtr<SimpleClient> client, bool force_close)
@@ -74,36 +73,37 @@ bool SimpleClient::OnQuery(CefRefPtr<CefBrowser> browser,
     std::string request_str = request.ToString();
     
     if (request_str == "minimize_window") {
-        if (g_cef_window) {
-            g_cef_window->Minimize();
+        if (g_sdl_window) {
+            SDL_MinimizeWindow(g_sdl_window);
             callback->Success("");
             return true;
         }
     }
     else if (request_str == "maximize_window") {
-        if (g_cef_window) {
-            g_cef_window->Maximize();
+        if (g_sdl_window) {
+            SDL_MaximizeWindow(g_sdl_window);
             callback->Success("");
             return true;
         }
     }
     else if (request_str == "restore_window") {
-        if (g_cef_window) {
-            g_cef_window->Restore();
+        if (g_sdl_window) {
+            SDL_RestoreWindow(g_sdl_window);
             callback->Success("");
             return true;
         }
     }
     else if (request_str == "close_window") {
-        if (g_cef_window) {
-            g_cef_window->Close();
+        if (g_sdl_window) {
+            SDL_DestroyWindow(g_sdl_window);
             callback->Success("");
             return true;
         }
     }
     else if (request_str == "get_window_state") {
-        if (g_cef_window) {
-            if (g_cef_window->IsMaximized()) {
+        if (g_sdl_window) {
+            Uint32 flags = SDL_GetWindowFlags(g_sdl_window);
+            if (flags & SDL_WINDOW_MAXIMIZED) {
                 callback->Success("maximized");
             } else {
                 callback->Success("normal");
@@ -161,8 +161,10 @@ void SimpleClient::OnTitleChange(CefRefPtr<CefBrowser> browser,
         windowTitle += " [RELEASE]";
     }
     
-    // Window title is now managed by CEF views
-    // SDL window is hidden and used only for compatibility
+    // Update SDL window title
+    if (g_sdl_window) {
+        SDL_SetWindowTitle(g_sdl_window, windowTitle.c_str());
+    }
 }
 
 void SimpleClient::OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
@@ -208,13 +210,16 @@ void SimpleClient::OnDraggableRegionsChanged(
     
     // Handle draggable regions for CSS -webkit-app-region: drag
     // This method is called when the web page defines draggable regions
-    if (g_cef_window) {
-        // Set draggable regions on the CEF window
-        // This enables CSS-based window dragging functionality
-        g_cef_window->SetDraggableRegions(regions);
-        
-        Logger::LogMessage("Updated draggable regions: " + std::to_string(regions.size()) + " regions");
-    }
+    // For SDL3 implementation, we would need to implement custom drag handling
+    // For now, we'll log the regions but not implement the dragging functionality
+    
+    Logger::LogMessage("Updated draggable regions: " + std::to_string(regions.size()) + " regions");
+    
+    // TODO: Implement SDL3-based window dragging based on these regions
+    // This would involve:
+    // 1. Converting CEF coordinates to SDL window coordinates
+    // 2. Handling mouse events in these regions to initiate window dragging
+    // 3. Using SDL_SetWindowPosition to move the window during drag operations
 }
 
 bool SimpleClient::OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
@@ -470,12 +475,12 @@ bool SimpleClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
         }
         
         // Block Ctrl+Shift+I (Developer Tools)
-        if (event.windows_key_code == 'I' && 
-            (event.modifiers & EVENTFLAG_CONTROL_DOWN) && 
-            (event.modifiers & EVENTFLAG_SHIFT_DOWN)) {
-            Logger::LogMessage("Blocked Ctrl+Shift+I developer tools shortcut");
-            return true;
-        }
+        // if (event.windows_key_code == 'I' && 
+        //     (event.modifiers & EVENTFLAG_CONTROL_DOWN) && 
+        //     (event.modifiers & EVENTFLAG_SHIFT_DOWN)) {
+        //     Logger::LogMessage("Blocked Ctrl+Shift+I developer tools shortcut");
+        //     return true;
+        // }
         
         // Block Ctrl+Shift+J (Console)
         if (event.windows_key_code == 'J' && 
@@ -517,12 +522,12 @@ bool SimpleClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
         }
         
         // Block Ctrl+N (New Window) - handled by frontend
-        // if (event.windows_key_code == 'N' && 
-        //     (event.modifiers & EVENTFLAG_CONTROL_DOWN) && 
-        //     !(event.modifiers & EVENTFLAG_SHIFT_DOWN)) {
-        //     Logger::LogMessage("Blocked Ctrl+N new window shortcut - handled by frontend");
-        //     return true;
-        // }
+        if (event.windows_key_code == 'N' && 
+            (event.modifiers & EVENTFLAG_CONTROL_DOWN) && 
+            !(event.modifiers & EVENTFLAG_SHIFT_DOWN)) {
+            Logger::LogMessage("Blocked Ctrl+N new window shortcut - handled by frontend");
+            return true;
+        }
         
         // Block Ctrl+T (New Tab) - handled by frontend
         if (event.windows_key_code == 'T' && 
@@ -589,24 +594,14 @@ void SimpleClient::SpawnNewWindow() {
     // Get the startup URL from config
     std::string url = AppConfig::GetStartupUrl();
     
-    // Create window info for the new browser window
-    CefWindowInfo window_info;
-    window_info.SetAsPopup(nullptr, "SwipeIDE - New Window");
-    window_info.bounds.x = 100;
-    window_info.bounds.y = 100;
-    window_info.bounds.width = 1200;
-    window_info.bounds.height = 800;
+    // For SDL3 implementation, spawning new windows would require:
+    // 1. Creating a new SDL window
+    // 2. Creating a new CEF browser with that window as parent
+    // 3. Managing multiple SDL windows and their associated CEF browsers
     
-    // Browser settings
-    CefBrowserSettings browser_settings;
-    // Note: web_security, file_access_from_file_urls, and universal_access_from_file_urls
-    // are not available in this version of CEF
+    // For now, we'll log the request but not implement multiple windows
+    Logger::LogMessage("SpawnNewWindow requested - not implemented in SDL3 version");
     
-    // Create a new client instance for the new window
-    CefRefPtr<SimpleClient> new_client = new SimpleClient();
-    
-    // Create the new browser window
-    CefBrowserHost::CreateBrowser(window_info, new_client, url, browser_settings, nullptr, nullptr);
-    
-    Logger::LogMessage("Spawned new browser window");
+    // TODO: Implement multi-window support for SDL3
+    // This would involve creating additional SDL windows and CEF browsers
 }

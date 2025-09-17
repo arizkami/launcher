@@ -1,13 +1,14 @@
-import { Wifi, User, Settings, Power, RotateCcw,  Search } from "lucide-react";
+import { Wifi, User, Settings, Power, RotateCcw, Search, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { useHeaderControls, usePowerMenu } from "../hooks/useGlobalState";
 
 interface HeaderProps {
     onSettingsClick?: () => void;
+    onDownloadsClick?: () => void;
 }
 
-function Header({ onSettingsClick }: HeaderProps) {
+function Header({ onSettingsClick, onDownloadsClick }: HeaderProps) {
     const [currentTime, setCurrentTime] = useState(new Date());
     const headerControls = useHeaderControls();
     const powerMenu = usePowerMenu();
@@ -101,11 +102,18 @@ function Header({ onSettingsClick }: HeaderProps) {
                     <User className="h-4 w-4 text-[#fff]" />
                 </div>
 
+                {/* Downloads */}
+                <div 
+                    className="h-full w-8 flex items-center justify-center hover:bg-[#1e1e1e] duration-200 cursor-pointer"
+                    onClick={onDownloadsClick}
+                    title="Downloads"
+                >
+                    <Download className="h-4 w-4 text-[#fff]" />
+                </div>
+
                 {/* Settings */}
                 <div 
-                    className={`h-full w-8 flex items-center justify-center hover:bg-[#1e1e1e] duration-200 cursor-pointer ${
-                        headerControls.settings.showSettingsMenu ? 'bg-[#1e1e1e]' : ''
-                    }`}
+                    className={`h-full w-8 flex items-center justify-center hover:bg-[#1e1e1e] duration-200 cursor-pointer`}
                     onClick={() => {
                         headerControls.settings.update({ showSettingsMenu: !headerControls.settings.showSettingsMenu });
                         if (onSettingsClick) onSettingsClick();
@@ -115,9 +123,9 @@ function Header({ onSettingsClick }: HeaderProps) {
                 </div>
 
                 {/* Power Button */}
-                <div className="relative power-menu-container">
+                <div className="relative power-menu-container h-full">
                     <div
-                        className={`h-full w-8 flex items-center justify-center hover:bg-[#1e1e1e] duration-200 cursor-pointer ${
+                        className={`w-8 h-full flex items-center justify-center hover:bg-[#1e1e1e] duration-200 cursor-pointer ${
                             powerMenu.isOpen ? 'bg-[#1e1e1e]' : ''
                         }`}
                         onClick={() => powerMenu.setPowerMenu(!powerMenu.isOpen)}
@@ -133,7 +141,7 @@ function Header({ onSettingsClick }: HeaderProps) {
                             exit={{ opacity: 0, y: -10 }}
                             className="absolute right-0 top-full mt-2 w-48 bg-[#1a1a1a] border border-[#333] rounded-lg shadow-xl z-50"
                         >
-                            <div className="py-2">
+                            <div className="py-2 z-[1000]">
                                 <motion.button
                                     whileHover={{ backgroundColor: '#2a2a2a' }}
                                     className={`w-full px-4 py-2 text-left text-white hover:bg-[#2a2a2a] flex items-center ${

@@ -11,6 +11,7 @@
 #include "include/wrapper/cef_message_router.h"
 #include "include/cef_task.h"
 #include "binaryresourceprovider.hpp"
+#include <SDL3/SDL.h>
 #include <list>
 
 class SimpleClient;

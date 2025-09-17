@@ -3,6 +3,9 @@
 #include <sstream>
 #include <chrono>
 #include <ctime>
+#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/stringbuffer.h>
 
 namespace SimpleIPC {
     
@@ -17,6 +20,16 @@ namespace SimpleIPC {
         RegisterHandler("launchGame", HandleLaunchGame);
         RegisterHandler("scanSteamLibrary", HandleScanSteamLibrary);
         RegisterHandler("scanEpicLibrary", HandleScanEpicLibrary);
+        
+        // Register DownloadManager handlers
+        RegisterHandler("startDownload", HandleStartDownload);
+        RegisterHandler("cancelDownload", HandleCancelDownload);
+        RegisterHandler("getDownloadInfo", HandleGetDownloadInfo);
+        RegisterHandler("getAllDownloads", HandleGetAllDownloads);
+        
+        // Register system dialog handlers
+        RegisterHandler("showFolderDialog", HandleShowFolderDialog);
+        RegisterHandler("getDriveLetters", HandleGetDriveLetters);
     }
     
     std::string IPCHandler::HandleCall(const std::string& method, const std::string& message) {
@@ -116,8 +129,212 @@ namespace SimpleIPC {
             result += "]";
             
             return result;
+            
         } catch (const std::exception& e) {
             return "{\"error\": \"" + std::string(e.what()) + "\"}";
+        }
+    }
+    
+    std::string HandleStartDownload(const std::string& message) {
+        try {
+            rapidjson::Document json;
+            json.Parse(message.c_str());
+            
+            if (json.HasParseError()) {
+                rapidjson::Document response;
+                response.SetObject();
+                auto& allocator = response.GetAllocator();
+                response.AddMember("success", false, allocator);
+                response.AddMember("error", "Invalid JSON", allocator);
+                
+                rapidjson::StringBuffer buffer;
+                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                response.Accept(writer);
+                return buffer.GetString();
+            }
+            
+            std::string url = json["url"].GetString();
+            std::string destination = json["destination"].GetString();
+            std::string filename = json.HasMember("filename") ? json["filename"].GetString() : "";
+            
+            auto& handler = IPCHandler::GetInstance();
+            int downloadId = handler.getDownloadManager()->startDownload(url, destination, filename);
+            
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", true, allocator);
+            response.AddMember("downloadId", downloadId, allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
+        } catch (const std::exception& e) {
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", false, allocator);
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
+        }
+    }
+    
+    std::string HandleCancelDownload(const std::string& message) {
+        try {
+            rapidjson::Document json;
+            json.Parse(message.c_str());
+            
+            if (json.HasParseError()) {
+                rapidjson::Document response;
+                response.SetObject();
+                auto& allocator = response.GetAllocator();
+                response.AddMember("success", false, allocator);
+                response.AddMember("error", "Invalid JSON", allocator);
+                
+                rapidjson::StringBuffer buffer;
+                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                response.Accept(writer);
+                return buffer.GetString();
+            }
+            
+            int downloadId = json["downloadId"].GetInt();
+            
+            auto& handler = IPCHandler::GetInstance();
+            bool success = handler.getDownloadManager()->cancelDownload(downloadId);
+            
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", success, allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
+        } catch (const std::exception& e) {
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", false, allocator);
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
+        }
+    }
+    
+    std::string HandleGetDownloadInfo(const std::string& message) {
+        try {
+            rapidjson::Document json;
+            json.Parse(message.c_str());
+            
+            if (json.HasParseError()) {
+                rapidjson::Document response;
+                response.SetObject();
+                auto& allocator = response.GetAllocator();
+                response.AddMember("success", false, allocator);
+                response.AddMember("error", "Invalid JSON", allocator);
+                
+                rapidjson::StringBuffer buffer;
+                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                response.Accept(writer);
+                return buffer.GetString();
+            }
+            
+            int downloadId = json["downloadId"].GetInt();
+            
+            auto& handler = IPCHandler::GetInstance();
+            auto info = handler.getDownloadManager()->getDownloadInfo(downloadId);
+            
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", true, allocator);
+            
+            rapidjson::Value downloadInfo(rapidjson::kObjectType);
+            downloadInfo.AddMember("url", rapidjson::Value(info.url.c_str(), allocator), allocator);
+            downloadInfo.AddMember("destination", rapidjson::Value(info.destination.c_str(), allocator), allocator);
+            downloadInfo.AddMember("filename", rapidjson::Value(info.filename.c_str(), allocator), allocator);
+            downloadInfo.AddMember("totalSize", info.totalSize, allocator);
+            downloadInfo.AddMember("downloadedSize", info.downloadedSize, allocator);
+            downloadInfo.AddMember("progress", info.progress, allocator);
+            downloadInfo.AddMember("isCompleted", info.isCompleted, allocator);
+            downloadInfo.AddMember("isFailed", info.isFailed, allocator);
+            downloadInfo.AddMember("errorMessage", rapidjson::Value(info.errorMessage.c_str(), allocator), allocator);
+            downloadInfo.AddMember("downloadId", info.downloadId, allocator);
+            
+            response.AddMember("downloadInfo", downloadInfo, allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
+        } catch (const std::exception& e) {
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", false, allocator);
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
+        }
+    }
+    
+    std::string HandleGetAllDownloads(const std::string& message) {
+        try {
+            auto& handler = IPCHandler::GetInstance();
+            auto downloads = handler.getDownloadManager()->getAllDownloads();
+            
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", true, allocator);
+            
+            rapidjson::Value downloadsArray(rapidjson::kArrayType);
+            
+            for (const auto& info : downloads) {
+                rapidjson::Value downloadJson(rapidjson::kObjectType);
+                downloadJson.AddMember("url", rapidjson::Value(info.url.c_str(), allocator), allocator);
+                downloadJson.AddMember("destination", rapidjson::Value(info.destination.c_str(), allocator), allocator);
+                downloadJson.AddMember("filename", rapidjson::Value(info.filename.c_str(), allocator), allocator);
+                downloadJson.AddMember("totalSize", info.totalSize, allocator);
+                downloadJson.AddMember("downloadedSize", info.downloadedSize, allocator);
+                downloadJson.AddMember("progress", info.progress, allocator);
+                downloadJson.AddMember("isCompleted", info.isCompleted, allocator);
+                downloadJson.AddMember("isFailed", info.isFailed, allocator);
+                downloadJson.AddMember("errorMessage", rapidjson::Value(info.errorMessage.c_str(), allocator), allocator);
+                downloadJson.AddMember("downloadId", info.downloadId, allocator);
+                
+                downloadsArray.PushBack(downloadJson, allocator);
+            }
+            
+            response.AddMember("downloads", downloadsArray, allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
+        } catch (const std::exception& e) {
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", false, allocator);
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
         }
     }
     
@@ -129,24 +346,61 @@ namespace SimpleIPC {
             // For now, assume message format: "platform:gameId"
             size_t colonPos = message.find(':');
             if (colonPos == std::string::npos) {
-                return "{\"error\": \"Invalid message format. Expected 'platform:gameId'\"}";
+                rapidjson::Document response;
+                response.SetObject();
+                auto& allocator = response.GetAllocator();
+                response.AddMember("error", "Invalid message format. Expected 'platform:gameId'", allocator);
+                
+                rapidjson::StringBuffer buffer;
+                rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+                response.Accept(writer);
+                return buffer.GetString();
             }
             
             std::string platform = message.substr(0, colonPos);
             std::string gameId = message.substr(colonPos + 1);
             
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            
             if (platform == "steam") {
                 bool success = handler.getGameManager()->launchSteamGame(gameId);
-                return success ? "{\"success\": true}" : "{\"error\": \"Failed to launch Steam game\"}";
+                if (success) {
+                    response.AddMember("success", true, allocator);
+                } else {
+                    response.AddMember("error", "Failed to launch Steam game", allocator);
+                }
             } else if (platform == "epic") {
                 bool success = handler.getGameManager()->launchEpicGame(gameId);
-                return success ? "{\"success\": true}" : "{\"error\": \"Failed to launch Epic game\"}";
+                if (success) {
+                    response.AddMember("success", true, allocator);
+                } else {
+                    response.AddMember("error", "Failed to launch Epic game", allocator);
+                }
             } else {
                 bool success = handler.getGameManager()->launchGame(gameId);
-                return success ? "{\"success\": true}" : "{\"error\": \"Failed to launch game\"}";
+                if (success) {
+                    response.AddMember("success", true, allocator);
+                } else {
+                    response.AddMember("error", "Failed to launch game", allocator);
+                }
             }
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
         } catch (const std::exception& e) {
-            return "{\"error\": \"" + std::string(e.what()) + "\"}";
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
         }
     }
     
@@ -165,7 +419,15 @@ namespace SimpleIPC {
             
             return result;
         } catch (const std::exception& e) {
-            return "{\"error\": \"" + std::string(e.what()) + "\"}";
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
         }
     }
     
@@ -184,7 +446,52 @@ namespace SimpleIPC {
             
             return result;
         } catch (const std::exception& e) {
-            return "{\"error\": \"" + std::string(e.what()) + "\"}";
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
         }
     }
+    
+    std::string HandleShowFolderDialog(const std::string& message) {
+        try {
+            auto result = launcher::filesystem::ShowFolderDialog();
+            return launcher::filesystem::FolderDialogResultToJson(result);
+        } catch (const std::exception& e) {
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", false, allocator);
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
+        }
+    }
+
+    std::string HandleGetDriveLetters(const std::string& message) {
+        try {
+            auto drives = launcher::filesystem::GetDriveLetters();
+            return launcher::filesystem::DriveListToJson(drives);
+        } catch (const std::exception& e) {
+            rapidjson::Document response;
+            response.SetObject();
+            auto& allocator = response.GetAllocator();
+            response.AddMember("success", false, allocator);
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
+            
+            rapidjson::StringBuffer buffer;
+            rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+            response.Accept(writer);
+            return buffer.GetString();
+        }
+    }
+
 }

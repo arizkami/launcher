@@ -34,12 +34,12 @@ body {
 
 /* Custom Scrollbar Styles */
 :root {
-  scrollbar-width: 4px;
+  scrollbar-width: 0px;
   scrollbar-color: var(--vscode-border) var(--vscode-bg-secondary);
 }
 
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 0px;
 }
 
 ::-webkit-scrollbar-track {

@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Play, Star, Calendar, Users, Globe, ExternalLink, Loader2 } from 'lucide-react';
+import { ArrowLeft, Play, Star, Calendar, Users, Globe, ExternalLink, Loader2, X, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { rawgApi, type Game, type Screenshot } from '../lib/rawgapi';
 import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
+import InstallDialog from '../components/dialog/installdialog';
+import { type WuwaGameData } from '../lib/wuwafetch';
+import { type DownloadInfo } from '../lib/downloadapi';
 
 interface GameDetailProps {
   gameId: number | string;
   onBack: () => void;
+  onNavigateToDownloads?: () => void;
 }
 
-const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
+const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack, onNavigateToDownloads }) => {
   const [game, setGame] = useState<Game | null>(null);
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,10 +21,43 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState<{ [key: string]: boolean }>({});
   const [selectedButtonIndex, setSelectedButtonIndex] = useState(0);
+  
+  // Installation state
+  const [isInstalled] = useState<boolean>(false);
+  const [isInstalling, setIsInstalling] = useState<boolean>(false);
+  const [showInstallDialog, setShowInstallDialog] = useState<boolean>(false);
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [wuwaGameData] = useState<WuwaGameData | null>(null);
+  const [downloadInfo] = useState<DownloadInfo | null>(null);
+  const [currentFileIndex] = useState<number>(0);
+  const [currentFileName] = useState<string>('');
 
   // Global state hooks
   const keyboardNav = useKeyboardNavigation();
-  
+
+  // Installation handlers
+  const handlePlay = () => {
+    console.log('Playing game:', game?.name);
+    // Add game launch logic here
+  };
+
+  const handleShowInstallDialog = () => {
+    setShowInstallDialog(true);
+  };
+
+  const handleInstall = () => {
+    setIsInstalling(true);
+    setShowInstallDialog(false);
+    // Add installation logic here
+    console.log('Starting installation for:', game?.name);
+  };
+
+  const handleCancelDownload = () => {
+    setIsInstalling(false);
+    setDownloadProgress(0);
+    console.log('Cancelled installation for:', game?.name);
+  };
+
   // Keyboard navigation for game details page
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
@@ -73,12 +110,12 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
       try {
         setLoading(true);
         setError(null);
-        
+
         const [gameData, screenshotsData] = await Promise.all([
           rawgApi.getGameDetails(gameId),
           rawgApi.getGameScreenshots(gameId)
         ]);
-        
+
         setGame(gameData);
         setScreenshots(screenshotsData.results);
         setSelectedScreenshot(gameData.background_image || null);
@@ -94,7 +131,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
 
   if (loading) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -107,7 +144,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
         >
           <Loader2 className="h-12 w-12 text-[var(--console-primary)]" />
         </motion.div>
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-[var(--console-text)] text-xl"
@@ -120,20 +157,20 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
 
   if (error) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
         className="flex flex-col items-center justify-center h-full bg-[var(--console-bg)] text-[var(--console-text)]"
       >
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-xl mb-4"
         >
           Error: {error}
         </motion.div>
-        <motion.button 
+        <motion.button
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           whileHover={{ scale: 1.05 }}
@@ -149,13 +186,13 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
 
   if (!game) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="flex items-center justify-center h-full bg-[var(--console-bg)]"
       >
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-[var(--console-text)] text-xl"
@@ -167,7 +204,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
   }
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -175,16 +212,15 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
       className="h-full relative bg-[var(--console-bg)] text-[var(--console-text)] overflow-y-auto"
     >
       {/* Header */}
-      <div 
+      <div
         className="fixed w-full pt-12 left-0 right-0 z-10 border-[var(--console-border)] p-4"
       >
-        <button 
+        <button
           onClick={onBack}
-          className={`flex items-center gap-2 transition-colors ${
-            selectedButtonIndex === 1 
-              ? 'text-[var(--console-text)] bg-[var(--console-accent)] px-3 py-2 rounded-md' 
-              : 'text-[var(--console-text-secondary)] hover:text-[var(--console-text)]'
-          }`}
+          className={`flex items-center gap-2 transition-colors ${selectedButtonIndex === 1
+            ? 'text-[var(--console-text)] bg-[var(--console-accent)] px-3 py-2 rounded-md'
+            : 'text-[var(--console-text-secondary)] hover:text-[var(--console-text)]'
+            }`}
         >
           <ArrowLeft className="h-5 w-5" />
           Back to Games
@@ -192,30 +228,30 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
       </div>
 
       {/* Hero Section */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 1.1 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{duration: 0.3}}
+        transition={{ duration: 0.3 }}
         className="relative h-96 overflow-hidden -mt-16"
       >
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ 
+          style={{
             backgroundImage: `url(${selectedScreenshot || game.background_image})`
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--console-bg)] via-[var(--console-bg)]/50 to-transparent" />
-        
+
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <div className="max-w-4xl mx-auto">
-            <motion.h1 
+            <motion.h1
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-4xl font-bold mb-2 text-white"
             >
               {game.name}
             </motion.h1>
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex items-center gap-4 text-sm text-gray-300"
@@ -243,38 +279,65 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
         </div>
       </motion.div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-4xl mx-auto p-6"
       >
         {/* Action Buttons */}
-        <motion.div 
+        {/* Action Buttons */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex gap-4 mb-8"
         >
-          <motion.button 
+          <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className={`flex items-center gap-2 px-6 py-3 rounded-md transition-colors font-medium ${
-              selectedButtonIndex === 0 
-                ? 'bg-[var(--console-glow)] text-white shadow-lg shadow-[var(--console-glow)]/25' 
-                : 'bg-[var(--console-primary)] hover:bg-[var(--console-accent)]'
-            }`}
-            onClick={() => console.log('Play game:', game?.name)}
+            className={`flex items-center gap-2 px-6 py-3 rounded-full transition-colors font-medium ${selectedButtonIndex === 0
+              ? 'bg-white/10 text-white shadow-lg shadow-[var(--console-glow)]/25'
+              : isInstalled
+                ? 'bg-green-600 hover:bg-green-700'
+                : isInstalling
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-[var(--console-primary)] hover:bg-[var(--console-accent)]'
+              }`}
+            onClick={() => {
+              if (isInstalled) {
+                handlePlay();
+              } else if (isInstalling) {
+                handleCancelDownload();
+              } else {
+                handleShowInstallDialog();
+              }
+            }}
+            disabled={loading}
           >
-            <Play className="h-5 w-5" />
-            Play Game
+            {isInstalled ? (
+              <>
+                <Play className="h-5 w-5" />
+                Play Game
+              </>
+            ) : isInstalling ? (
+              <>
+                <X className="h-5 w-5" />
+                Cancel Installation
+              </>
+            ) : (
+              <>
+                <Download className="h-5 w-5" />
+                Install Game
+              </>
+            )}
           </motion.button>
-          {game.website && (
-            <motion.a 
+          {game?.website && (
+            <motion.a
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               href={game.website}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-6 py-3 border border-[var(--console-border)] hover:border-[var(--console-text-secondary)] rounded-md transition-colors"
+              className="flex items-center gap-2 px-6 py-3 border border-[var(--console-border)] hover:border-[var(--console-text-secondary)] rounded-full transition-colors"
             >
               <Globe className="h-5 w-5" />
               Official Website
@@ -284,7 +347,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
         </motion.div>
 
         {/* Game Info Grid */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           className="grid grid-cols-1 lg:grid-cols-3 gap-8"
@@ -293,7 +356,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
           <div className="lg:col-span-2">
             {/* Description */}
             {game.description_raw && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-8"
@@ -307,7 +370,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
 
             {/* Screenshots */}
             {screenshots.length > 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mb-8"
@@ -315,7 +378,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
                 <h2 className="text-2xl font-bold mb-4">Screenshots</h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {screenshots.slice(0, 6).map((screenshot) => (
-                    <motion.div 
+                    <motion.div
                       key={screenshot.id}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -335,11 +398,11 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
                           </motion.div>
                         )}
                       </AnimatePresence>
-                      <motion.img 
+                      <motion.img
                         initial={{ opacity: 0 }}
                         animate={{ opacity: imageLoading[screenshot.image] ? 0 : 1 }}
                         transition={{ duration: 0.3 }}
-                        src={screenshot.image} 
+                        src={screenshot.image}
                         alt="Game screenshot"
                         className="w-full h-full object-cover"
                         onLoad={() => setImageLoading(prev => ({ ...prev, [screenshot.image]: false }))}
@@ -353,7 +416,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
           </div>
 
           {/* Sidebar */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="space-y-6"
@@ -367,7 +430,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
                 <h3 className="text-lg font-semibold mb-3">Platforms</h3>
                 <div className="flex flex-wrap gap-2">
                   {game.platforms.map((platform) => (
-                    <motion.span 
+                    <motion.span
                       key={platform.platform.id}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -389,7 +452,7 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
                 <h3 className="text-lg font-semibold mb-3">Genres</h3>
                 <div className="flex flex-wrap gap-2">
                   {game.genres.map((genre) => (
-                    <motion.span 
+                    <motion.span
                       key={genre.id}
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -411,8 +474,8 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
                 <h3 className="text-lg font-semibold mb-3">Developers</h3>
                 <div className="space-y-1">
                   {game.developers.map((developer) => (
-                    <motion.div 
-                      key={developer.id} 
+                    <motion.div
+                      key={developer.id}
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
                       className="text-[var(--console-text-secondary)]"
@@ -433,8 +496,8 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
                 <h3 className="text-lg font-semibold mb-3">Publishers</h3>
                 <div className="space-y-1">
                   {game.publishers.map((publisher) => (
-                    <motion.div 
-                      key={publisher.id} 
+                    <motion.div
+                      key={publisher.id}
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
                       className="text-[var(--console-text-secondary)]"
@@ -454,12 +517,12 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
               >
                 <h3 className="text-lg font-semibold mb-3">Metacritic Score</h3>
                 <div className="flex items-center gap-2">
-                  <motion.div 
+                  <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     className={`
                       px-3 py-1 rounded font-bold text-white
-                      ${game.metacritic >= 75 ? 'bg-green-600' : 
+                      ${game.metacritic >= 75 ? 'bg-green-600' :
                         game.metacritic >= 50 ? 'bg-yellow-600' : 'bg-red-600'}
                     `}
                   >
@@ -471,6 +534,21 @@ const GameDetail: React.FC<GameDetailProps> = ({ gameId, onBack }) => {
           </motion.div>
         </motion.div>
       </motion.div>
+
+      {/* Install Dialog */}
+      <InstallDialog
+        isOpen={showInstallDialog}
+        onClose={() => setShowInstallDialog(false)}
+        onInstall={handleInstall}
+        onCancel={() => setShowInstallDialog(false)}
+        onNavigateToDownloads={onNavigateToDownloads}
+        wuwaGameData={wuwaGameData}
+        isInstalling={isInstalling}
+        downloadProgress={downloadProgress}
+        downloadInfo={downloadInfo}
+        currentFileIndex={currentFileIndex}
+        currentFileName={currentFileName}
+      />
     </motion.div>
   );
 };
