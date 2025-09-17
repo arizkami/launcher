@@ -18,15 +18,14 @@
 #undef GetParent
 #endif
 
-// Removed SDL includes - using CEF views exclusively
+// SDL3 includes for window management
+#include <SDL3/SDL.h>
+
+// CEF includes - using browser container instead of views
 #include "include/cef_app.h"
 #include "include/cef_browser.h"
 #include "include/cef_crash_util.h"
 #include "include/wrapper/cef_helpers.h"
-#include "include/views/cef_window.h"
-#include "include/views/cef_window_delegate.h"
-#include "include/views/cef_browser_view.h"
-#include "include/views/cef_browser_view_delegate.h"
 #include "include/cef_image.h"
 #include <filesystem>
 #include <fstream>
@@ -40,8 +39,8 @@
 
 // Global variables
 CefRefPtr<SimpleClient> g_client;
-CefRefPtr<CefWindow> g_cef_window;
-CefRefPtr<CefBrowserView> g_browser_view;
+SDL_Window* g_sdl_window = nullptr;
+CefRefPtr<CefBrowser> g_browser;
 bool g_running = true;
 bool g_is_fullscreen = true;
 
@@ -127,6 +126,51 @@ void SetApplicationUserModelID(HWND hwnd) {
     }
 }
 
+// Create SDL3 borderless window
+SDL_Window* CreateBorderlessWindow() {
+    int init_result = SDL_Init(SDL_INIT_VIDEO);
+    if (init_result < 0) {
+        Logger::LogMessage("Failed to initialize SDL: " + std::string(SDL_GetError()));
+        return nullptr;
+    }
+    
+    Uint32 window_flags = SDL_WINDOW_BORDERLESS | SDL_WINDOW_RESIZABLE;
+    if (g_is_fullscreen) {
+        window_flags |= SDL_WINDOW_FULLSCREEN;
+    }
+    
+    int width = g_is_fullscreen ? 0 : 1200;  // 0 for fullscreen desktop
+    int height = g_is_fullscreen ? 0 : 800;
+    
+    SDL_Window* window = SDL_CreateWindow(
+        "SwipeIDE",
+        width, height,
+        window_flags
+    );
+    
+    if (!window) {
+        Logger::LogMessage("Failed to create SDL window: " + std::string(SDL_GetError()));
+        SDL_Quit();
+        return nullptr;
+    }
+    
+    // Get native window handle for CEF integration using SDL3 properties API
+    SDL_PropertiesID props = SDL_GetWindowProperties(window);
+    HWND hwnd = (HWND)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
+    
+    if (hwnd) {
+        // Set application ID and taskbar icon
+        SetApplicationUserModelID(hwnd);
+        SetPermanentTaskbarIcon(hwnd);
+        
+        Logger::LogMessage("SDL3 borderless window created successfully");
+    } else {
+        Logger::LogMessage("Failed to get native window handle from SDL3 properties");
+    }
+    
+    return window;
+}
+
 // Convert Windows HICON to CEF image for window icon
 CefRefPtr<CefImage> ConvertIconToCefImage(HICON hIcon) {
     if (!hIcon) {
@@ -194,102 +238,25 @@ CefRefPtr<CefImage> ConvertIconToCefImage(HICON hIcon) {
     return image;
 }
 
-// Custom browser view delegate to hide browser UI
-class CustomBrowserViewDelegate : public CefBrowserViewDelegate {
-public:
-    CustomBrowserViewDelegate() {}
-    
-    // Override to customize browser view behavior
-    CefRefPtr<CefBrowserViewDelegate> GetDelegateForPopupBrowserView(
-        CefRefPtr<CefBrowserView> browser_view,
-        const CefBrowserSettings& settings,
-        CefRefPtr<CefClient> client,
-        bool is_devtools) override {
-        return nullptr;
-    }
-    
-    // Override to hide Chrome toolbar and UI elements
-    ChromeToolbarType GetChromeToolbarType(
-        CefRefPtr<CefBrowserView> browser_view) override {
-        return CEF_CTT_NONE; // Hide all Chrome UI elements
-    }
-    
-private:
-    IMPLEMENT_REFCOUNTING(CustomBrowserViewDelegate);
-};
-
-// Custom window delegate for borderless window with dragging support
-class CustomWindowDelegate : public CefWindowDelegate {
-public:
-    CustomWindowDelegate() {}
-    
-    // Called when window is created - set the icon here
-    void OnWindowCreated(CefRefPtr<CefWindow> window) override {
-        // Get window handle
-        HWND hwnd = window->GetWindowHandle();
-        if (!hwnd) {
-            Logger::LogMessage("Failed to get window handle in OnWindowCreated");
-            return;
-        }
-        
-        // Set unique Application User Model ID first
-        SetApplicationUserModelID(hwnd);
-        
-        // Load the application icon once
-        HICON hIcon = LoadApplicationIcon();
-        if (hIcon) {
-            // Convert to CEF image for CEF window icon
-            CefRefPtr<CefImage> cefIcon = ConvertIconToCefImage(hIcon);
-            if (cefIcon) {
-                window->SetWindowIcon(cefIcon);
-                window->SetWindowAppIcon(cefIcon);
-                Logger::LogMessage("CEF window icons set successfully");
-            }
-            
-            // Set native Windows taskbar icon
-            SetPermanentTaskbarIcon(hwnd);
-        } else {
-            Logger::LogMessage("Failed to load application icon in OnWindowCreated");
-        }
-    }
-    
-    // Use standard window frame to ensure proper taskbar integration
-    bool IsFrameless(CefRefPtr<CefWindow> window) override {
-        return true;  // Use standard frame for reliable taskbar icon display
-    }
-    
-    // Allow window to be resizable
-    bool CanResize(CefRefPtr<CefWindow> window) override {
-        return true;
-    }
-    
-    // Set initial window size - fullscreen if enabled
-    CefSize GetPreferredSize(CefRefPtr<CefView> view) override {
-        if (g_is_fullscreen) {
-            // Get screen dimensions for fullscreen
-            int screen_width = GetSystemMetrics(SM_CXSCREEN);
-            int screen_height = GetSystemMetrics(SM_CYSCREEN);
-            return CefSize(screen_width, screen_height);
-        }
-        return CefSize(1200, 800);
-    }
-    
-    // Handle window close
-    bool CanClose(CefRefPtr<CefWindow> window) override {
-        g_running = false;
-        return true;
-    }
-    
-    // Note: Window dragging is handled automatically by CEF for frameless windows
-    
-private:
-    IMPLEMENT_REFCOUNTING(CustomWindowDelegate);
-};
-
-// Handle events
+// Handle SDL events
 void HandleEvents() {
-    // CEF handles all events through its message loop
-    // No additional event handling needed
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_EVENT_QUIT:
+                g_running = false;
+                break;
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                g_running = false;
+                break;
+            case SDL_EVENT_KEY_DOWN:
+                // Handle special key combinations
+                if (event.key.key == SDLK_F4 && (event.key.mod & SDL_KMOD_ALT)) {
+                    g_running = false;
+                }
+                break;
+        }
+    }
 }
 
 // Use WinMain instead of main for Windows applications without console
@@ -348,70 +315,57 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // Register scheme handler factory for miko:// protocol
     CefRegisterSchemeHandlerFactory("miko", "", new BinaryResourceProvider());
 
-    // Create CEF views-based borderless window
+    // Create SDL3 borderless window
+    g_sdl_window = CreateBorderlessWindow();
+    if (!g_sdl_window) {
+        Logger::LogMessage("Failed to create SDL window, exiting");
+        CefShutdown();
+        return -1;
+    }
+
+    // Create CEF client and browser
     g_client = new SimpleClient();
     std::string startupUrl = AppConfig::GetStartupUrl();
     
-    // Create browser view with hidden UI elements
-    CefBrowserSettings browser_settings;
+    // Get native window handle for CEF browser creation using SDL3 properties API
+    SDL_PropertiesID props = SDL_GetWindowProperties(g_sdl_window);
+    HWND hwnd = (HWND)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr);
     
-    // Configure browser settings with security restrictions
-     browser_settings.javascript_access_clipboard = STATE_DISABLED;  // Disable clipboard access for security
-     browser_settings.javascript_dom_paste = STATE_DISABLED;  // Disable DOM paste for security
-     browser_settings.local_storage = STATE_ENABLED;
-     browser_settings.javascript_close_windows = STATE_DISABLED;  // Prevent JavaScript from closing windows
-
-    // Create browser view delegate to hide UI elements
-    CefRefPtr<CustomBrowserViewDelegate> browser_view_delegate = new CustomBrowserViewDelegate();
-    
-    g_browser_view = CefBrowserView::CreateBrowserView(g_client, startupUrl, browser_settings, nullptr, nullptr, browser_view_delegate);
-    
-    // Create window with custom delegate for borderless functionality
-    CefRefPtr<CustomWindowDelegate> window_delegate = new CustomWindowDelegate();
-    g_cef_window = CefWindow::CreateTopLevelWindow(window_delegate);
-    
-    // Add browser view to window
-    g_cef_window->AddChildView(g_browser_view);
-    
-    // Set window title
-    g_cef_window->SetTitle(windowTitle);
-    
-    // Show the window
-    g_cef_window->Show();
-    
-    // Set fullscreen or center the window
-    if (g_is_fullscreen) {
-        // Maximize window to fullscreen
-        g_cef_window->Maximize();
-        
-        // Get the native window handle and set fullscreen properties
-        HWND hwnd = g_cef_window->GetWindowHandle();
-        if (hwnd) {
-            // Remove window decorations and set fullscreen style
-            SetWindowLong(hwnd, GWL_STYLE, WS_POPUP | WS_VISIBLE);
-            SetWindowLong(hwnd, GWL_EXSTYLE, WS_EX_TOPMOST);
-            
-            // Set window to cover entire screen
-            int screen_width = GetSystemMetrics(SM_CXSCREEN);
-            int screen_height = GetSystemMetrics(SM_CYSCREEN);
-            SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, screen_width, screen_height, 
-                        SWP_NOZORDER | SWP_FRAMECHANGED);
-        }
-    } else {
-        // Center the window
-        g_cef_window->CenterWindow(CefSize(1200, 800));
+    if (!hwnd) {
+        Logger::LogMessage("Failed to get native window handle from SDL3 properties");
+        SDL_DestroyWindow(g_sdl_window);
+        SDL_Quit();
+        CefShutdown();
+        return -1;
     }
+    
+    // Configure CEF browser settings
+    CefBrowserSettings browser_settings;
+    browser_settings.javascript_access_clipboard = STATE_DISABLED;
+    browser_settings.javascript_dom_paste = STATE_DISABLED;
+    browser_settings.local_storage = STATE_ENABLED;
+    browser_settings.javascript_close_windows = STATE_DISABLED;
 
-    // Final taskbar icon verification after window is fully shown
-    Sleep(200); // Brief delay for window initialization
-    HWND hwnd = g_cef_window->GetWindowHandle();
-    if (hwnd) {
-        SetPermanentTaskbarIcon(hwnd);
-        Logger::LogMessage("Final taskbar icon verification completed");
+    // Create CEF window info for the browser
+    CefWindowInfo window_info;
+    RECT rect;
+    GetClientRect(hwnd, &rect);
+    CefRect cef_rect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+    window_info.SetAsChild(hwnd, cef_rect);
+    
+    // Create the browser
+    g_browser = CefBrowserHost::CreateBrowserSync(window_info, g_client.get(), startupUrl, browser_settings, nullptr, nullptr);
+    
+    if (!g_browser) {
+        Logger::LogMessage("Failed to create CEF browser");
+        SDL_DestroyWindow(g_sdl_window);
+        SDL_Quit();
+        CefShutdown();
+        return -1;
     }
 
     // Log startup information
-    Logger::LogMessage("=== SwipeIDE CEF + SDL Application ===");
+    Logger::LogMessage("=== SwipeIDE SDL3 + CEF Application ===");
     Logger::LogMessage("Mode: " + std::string(AppConfig::IsDebugMode() ? "DEBUG" : "RELEASE"));
     Logger::LogMessage("URL: " + startupUrl);
     if (AppConfig::IsDebugMode()) {
@@ -421,13 +375,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     Logger::LogMessage("======================================");
 
     // Main loop
-    while (g_running && g_cef_window && !g_cef_window->IsClosed()) {
+    while (g_running && g_sdl_window) {
         HandleEvents();
         CefDoMessageLoopWork();
         Sleep(1); // Small delay to prevent 100% CPU usage
     }
 
     // Cleanup
+    if (g_browser) {
+        g_browser->GetHost()->CloseBrowser(true);
+        g_browser = nullptr;
+    }
+    
+    if (g_sdl_window) {
+        SDL_DestroyWindow(g_sdl_window);
+        g_sdl_window = nullptr;
+    }
+    
+    SDL_Quit();
     CefShutdown();
 
     return 0;
