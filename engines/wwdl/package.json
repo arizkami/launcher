@@ -1,0 +1,24 @@
+{
+  "name": "wwdl-downloader",
+  "version": "1.0.0",
+  "description": "Wuthering Waves Downloader - TypeScript version",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run index.ts",
+    "build": "bun build index.ts --outdir dist --target bun",
+    "start": "bun run dist/index.js"
+  },
+  "keywords": ["wuthering-waves", "downloader", "game"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  }
+}

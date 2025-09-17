@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { Settings as SettingsIcon, User, Bell, Globe, Monitor, Shield, ChevronRight } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Globe, Monitor, Shield, ChevronRight, ArrowLeft } from 'lucide-react';
 
-function Settings() {
+interface SettingsProps {
+    onBack: () => void;
+}
+
+function Settings({ onBack }: SettingsProps) {
     const [activeSection, setActiveSection] = useState('general');
 
     const settingsSections = [
@@ -14,7 +18,7 @@ function Settings() {
     ];
 
     return (
-        <div className="relative min-h-screen bg-gradient-to-br from-[var(--console-bg)] via-[var(--console-bg-secondary)] to-[var(--console-bg)]">
+        <div className="relative min-h-screen ">
             {/* Background gradient for transparency */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/40"></div>
             
@@ -22,8 +26,18 @@ function Settings() {
                 <div className="max-w-6xl mx-auto">
                     {/* Header */}
                     <div className="mb-8">
-                        <h1 className="text-4xl font-bold text-white mb-2">Settings</h1>
-                        <p className="text-[var(--console-text-secondary)]">Customize your launcher experience</p>
+                        <div className="flex items-center space-x-4 mb-4">
+                            <button
+                                onClick={onBack}
+                                className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 border border-[var(--console-border)] transition-colors duration-200 group"
+                            >
+                                <ArrowLeft className="w-5 h-5 text-[var(--console-text-secondary)] group-hover:text-white" />
+                            </button>
+                            <div>
+                                <h1 className="text-4xl font-bold text-white">Settings</h1>
+                            </div>
+                        </div>
+                        <p className="text-[var(--console-text-secondary)] ml-14">Customize your launcher experience</p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

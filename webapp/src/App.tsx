@@ -9,6 +9,7 @@ import Store from './pages/store';
 import Settings from './pages/settings';
 import { GlobalStateProvider } from './hooks/useGlobalState';
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
+import { MagicMouse } from 'magicmouse.ts';
 //@ts-expect-error
 import '@fontsource-variable/inter';
 
@@ -44,95 +45,98 @@ const AppContent: React.FC = () => {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--console-accent)_0%,_transparent_50%)] opacity-30"></div>
        */}
       {/* Main Layout */}
-      <div className="relative z-10 flex h-full">
-        {/* <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} /> */}
+      <MagicMouse color="#fff" MagicMouseOff={true}>
+        <div className="relative z-10 flex h-full">
+          {/* <Sidebar currentPage={currentPage} onPageChange={setCurrentPage} /> */}
 
-        <div className="flex-1 flex flex-col w-screen">
-          <Header 
-            onSettingsClick={() => setCurrentPage('settings')}
-          />
+          <div className="flex-1 flex flex-col w-screen">
+            <Header
+              onSettingsClick={() => setCurrentPage('settings')}
+            />
 
-          {/* Main Content Area */}
-          <main className="flex-1 overflow-hidden">
-            <AnimatePresence mode="wait">
-              {currentPage === 'gamedetail' && selectedGameId && (
-                <motion.div
-                  key="gamedetail"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="h-full"
-                >
-                  <GameDetail
-                    gameId={selectedGameId}
-                    onBack={() => setCurrentPage('home')}
-                  />
-                </motion.div>
-              )}
-              {currentPage === 'home' && (
-                <motion.div
-                  key="store"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="h-full"
-                >
-                  <Home 
-                    onGameSelect={(gameId) => {
+            {/* Main Content Area */}
+            <main className="flex-1 overflow-hidden">
+              <AnimatePresence mode="wait">
+                {currentPage === 'gamedetail' && selectedGameId && (
+                  <motion.div
+                    key="gamedetail"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="h-full"
+                  >
+                    <GameDetail
+                      gameId={selectedGameId}
+                      onBack={() => setCurrentPage('home')}
+                    />
+                  </motion.div>
+                )}
+                {currentPage === 'home' && (
+                  <motion.div
+                    key="store"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="h-full"
+                  >
+                    <Home
+                      onGameSelect={(gameId) => {
+                        setSelectedGameId(gameId);
+                        setCurrentPage('gamedetail');
+                      }}
+                      onNavigateToLibrary={() => setCurrentPage('library')}
+                    />
+                  </motion.div>
+                )}
+                {currentPage === 'library' && (
+                  <motion.div
+                    key="library"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="h-full"
+                  >
+                    <Library onGameSelect={(gameId: number | string) => {
                       setSelectedGameId(gameId);
                       setCurrentPage('gamedetail');
-                    }}
-                  />
-                </motion.div>
-              )}
-              {currentPage === 'library' && (
-                <motion.div
-                  key="library"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="h-full"
-                >
-                  <Library onGameSelect={(gameId) => {
-                    setSelectedGameId(gameId);
-                    setCurrentPage('gamedetail');
-                  }} />
-                </motion.div>
-              )}
-              {currentPage === 'store' && (
-                <motion.div
-                  key="store"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="h-full"
-                >
-                  <Store onGameSelect={(gameId) => {
-                    setSelectedGameId(gameId);
-                    setCurrentPage('gamedetail');
-                  }} />
-                </motion.div>
-              )}
-              {currentPage === 'settings' && (
-                <motion.div
-                  key="store"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 1.05 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="h-full"
-                >
-                  <Settings />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </main>
+                    }} />
+                  </motion.div>
+                )}
+                {currentPage === 'store' && (
+                  <motion.div
+                    key="store"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="h-full"
+                  >
+                    <Store onGameSelect={(gameId) => {
+                      setSelectedGameId(gameId);
+                      setCurrentPage('gamedetail');
+                    }} />
+                  </motion.div>
+                )}
+                {currentPage === 'settings' && (
+                  <motion.div
+                    key="settings"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="h-full"
+                  >
+                    <Settings onBack={() => setCurrentPage('home')} />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </main>
+          </div>
         </div>
-      </div>
+      </MagicMouse>
     </motion.div>
   );
 };

@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "engines/wuwa"
+]
+
+resolver = "2"

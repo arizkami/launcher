@@ -1,7 +1,7 @@
 #include "client.hpp"
 #include "config.hpp"
 #include "logger.hpp"
-#include "internal/simpleipc.hpp"
+#include "internal/ipc.hpp"
 #include "include/wrapper/cef_helpers.h"
 #include "include/cef_app.h"
 #include "include/views/cef_window.h"
@@ -470,12 +470,12 @@ bool SimpleClient::OnPreKeyEvent(CefRefPtr<CefBrowser> browser,
         }
         
         // Block Ctrl+Shift+I (Developer Tools)
-        // if (event.windows_key_code == 'I' && 
-        //     (event.modifiers & EVENTFLAG_CONTROL_DOWN) && 
-        //     (event.modifiers & EVENTFLAG_SHIFT_DOWN)) {
-        //     Logger::LogMessage("Blocked Ctrl+Shift+I developer tools shortcut");
-        //     return true;
-        // }
+        if (event.windows_key_code == 'I' && 
+            (event.modifiers & EVENTFLAG_CONTROL_DOWN) && 
+            (event.modifiers & EVENTFLAG_SHIFT_DOWN)) {
+            Logger::LogMessage("Blocked Ctrl+Shift+I developer tools shortcut");
+            return true;
+        }
         
         // Block Ctrl+Shift+J (Console)
         if (event.windows_key_code == 'J' && 

@@ -2,9 +2,11 @@
 
 #include "include/cef_browser.h"
 #include "include/cef_frame.h"
+#include "gamemanager.hpp"
 #include <string>
 #include <functional>
 #include <map>
+#include <memory>
 
 namespace SimpleIPC {
     // Message handler callback type
@@ -24,6 +26,9 @@ namespace SimpleIPC {
         // Get singleton instance
         static IPCHandler& GetInstance();
         
+        // Public access to GameManager
+        launcher::GameManager* getGameManager() { return &launcher::GameManager::getInstance(); }
+        
     private:
         std::map<std::string, MessageHandler> handlers_;
     };
@@ -35,4 +40,10 @@ namespace SimpleIPC {
     std::string HandlePing(const std::string& message);
     std::string HandleGetSystemInfo(const std::string& message);
     std::string HandleEcho(const std::string& message);
+    
+    // GameManager IPC methods
+    std::string HandleGetGames(const std::string& message);
+    std::string HandleLaunchGame(const std::string& message);
+    std::string HandleScanSteamLibrary(const std::string& message);
+    std::string HandleScanEpicLibrary(const std::string& message);
 }

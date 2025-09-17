@@ -48,10 +48,10 @@ function parseArguments(): { projects: string[], config: BuildConfig } {
         parallel: true
     };
     const projects: string[] = [];
-    
+
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
-        
+
         switch (arg) {
             case '--debug':
             case '-d':
@@ -92,12 +92,12 @@ function parseArguments(): { projects: string[], config: BuildConfig } {
                 break;
         }
     }
-    
+
     // Default to main project if no projects specified
     if (projects.length === 0) {
         projects.push('main');
     }
-    
+
     return { projects, config };
 }
 
@@ -132,32 +132,33 @@ async function runCommand(command: string[], cwd: string, verbose: boolean): Pro
     if (verbose) {
         console.log(`Running: ${command.join(' ')} (in ${cwd})`);
     }
-    
+
     const proc = Bun.spawn(command, {
         cwd,
         stdout: 'inherit',
         stderr: 'inherit'
     });
-    
+
     const exitCode = await proc.exited;
     return exitCode === 0;
 }
 
 async function configureProject(projectPath: string, config: BuildConfig): Promise<boolean> {
     const buildDir = join(projectPath, 'build');
-    
+
     // Create build directory if it doesn't exist
     if (!existsSync(buildDir)) {
         mkdirSync(buildDir, { recursive: true });
     }
-    
+
     const configureCmd = [
         'cmake',
         '-S', '.',
         '-B', 'build',
-        `-DCMAKE_BUILD_TYPE=${config.config}`
+        `-DCMAKE_BUILD_TYPE=${config.config}`,
+        '-DCMAKE_POLICY_VERSION_MINIMUM=3.5'
     ];
-    
+
     console.log(`Configuring project in ${projectPath}...`);
     return await runCommand(configureCmd, projectPath, config.verbose);
 }
@@ -166,25 +167,64 @@ async function buildProject(projectPath: string, config: BuildConfig): Promise<b
     const buildCmd = [
         'cmake',
         '--build', 'build',
-        '--config', config.config
+        '--config', config.config,
+        '--verbose'
     ];
-    
+
     if (config.verbose) {
         buildCmd.push('--verbose');
     }
-    
+
     if (config.parallel && config.jobs) {
         buildCmd.push('--parallel', config.jobs.toString());
     } else if (config.parallel) {
         buildCmd.push('--parallel');
     }
-    
+
     if (config.target) {
         buildCmd.push('--target', config.target);
     }
-    
+
     console.log(`Building project in ${projectPath}...`);
     return await runCommand(buildCmd, projectPath, config.verbose);
+}
+
+async function buildEngines(config: BuildConfig): Promise<boolean> {
+    console.log('\n=== Building Download Engines ===');
+
+    // Build Sophon Downloader
+    const sophonPath = join(process.cwd(), 'engines/sophon/Sophon.Downloader');
+    const outputPath = join(process.cwd(), `build/${config.config}/bin/sophon`);
+
+    if (!existsSync(sophonPath)) {
+        console.log('⚠️  Sophon Downloader not found, skipping...');
+        return true;
+    }
+
+    // Create output directory
+    if (!existsSync(outputPath)) {
+        mkdirSync(outputPath, { recursive: true });
+    }
+
+    const dotnetConfig = config.config === 'Debug' ? 'Debug' : 'Release';
+    const publishCmd = [
+        'dotnet',
+        'publish',
+        sophonPath,
+        '--configuration', dotnetConfig,
+        '--output', outputPath
+    ];
+
+    console.log('Building Sophon Downloader...');
+    const success = await runCommand(publishCmd, process.cwd(), config.verbose);
+
+    if (!success) {
+        console.error('❌ Failed to build Sophon Downloader');
+        return false;
+    }
+
+    console.log('✅ Successfully built Sophon Downloader');
+    return true;
 }
 
 async function buildSingleProject(projectName: string, config: BuildConfig): Promise<boolean> {
@@ -194,16 +234,16 @@ async function buildSingleProject(projectName: string, config: BuildConfig): Pro
         console.error(`Available projects: ${PROJECTS.map(p => p.name).join(', ')}`);
         return false;
     }
-    
+
     const projectPath = join(process.cwd(), project.path);
-    
+
     if (!existsSync(join(projectPath, 'CMakeLists.txt'))) {
         console.error(`Error: No CMakeLists.txt found in ${projectPath}`);
         return false;
     }
-    
+
     console.log(`\n=== Building ${project.description} ===`);
-    
+
     // Configure project
     const configureSuccess = await configureProject(projectPath, config);
     if (!configureSuccess) {
@@ -211,21 +251,30 @@ async function buildSingleProject(projectName: string, config: BuildConfig): Pro
         return false;
     }
     console.log(`✅ Configuration completed for ${project.name}`);
-    
+
     // Build project
     const buildSuccess = await buildProject(projectPath, config);
     if (!buildSuccess) {
         console.error(`❌ Failed to build ${project.name}`);
         return false;
     }
-    
+
     console.log(`✅ Successfully built ${project.name}`);
+
+    // Build engines after main project
+    if (projectName === 'main') {
+        const engineSuccess = await buildEngines(config);
+        if (!engineSuccess) {
+            return false;
+        }
+    }
+
     return true;
 }
 
 async function main(): Promise<void> {
     const { projects, config } = parseArguments();
-    
+
     console.log('CEF Quickstart CMake Build Tool');
     console.log(`Build configuration: ${config.config}`);
     console.log(`Verbose: ${config.verbose}`);
@@ -237,10 +286,10 @@ async function main(): Promise<void> {
         console.log(`Target: ${config.target}`);
     }
     console.log('');
-    
+
     let allSuccess = true;
     const projectsToBuild = projects.includes('all') ? PROJECTS.map(p => p.name) : projects;
-    
+
     for (const projectName of projectsToBuild) {
         const success = await buildSingleProject(projectName, config);
         if (!success) {
@@ -248,7 +297,7 @@ async function main(): Promise<void> {
             break;
         }
     }
-    
+
     console.log('');
     if (allSuccess) {
         console.log('🎉 All builds completed successfully!');

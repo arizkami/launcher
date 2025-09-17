@@ -15,12 +15,26 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
+# Download RapidJSON
+FetchContent_Declare(
+    rapidjson
+    GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
+    GIT_TAG v1.1.0
+    GIT_SHALLOW TRUE
+)
+
 # Configure SDL3 options
 set(SDL_SHARED ON CACHE BOOL "Build SDL3 as shared library")
 set(SDL_STATIC OFF CACHE BOOL "Build SDL3 as static library")
 set(SDL_TEST OFF CACHE BOOL "Build SDL3 test programs")
 
+# Configure RapidJSON options
+set(RAPIDJSON_BUILD_DOC OFF CACHE BOOL "Build rapidjson documentation")
+set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "Build rapidjson examples")
+set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "Build rapidjson tests")
+
 FetchContent_MakeAvailable(SDL3)
+FetchContent_MakeAvailable(rapidjson)
 
 # Set CEF version and platform
 set(CEF_VERSION "138.0.27+g0b28f18+chromium-138.0.7204.158")
@@ -159,7 +173,8 @@ add_executable(${PROJECT_NAME} WIN32
     app/webapp.cpp
     app/BinaryResourceProvider.cpp
     app/ResourceUtil.cpp
-    app/internal/simpleipc.cpp
+    app/internal/ipc.cpp
+    app/internal/gamemanager.cpp
 )
 
 # Add Windows resource file
@@ -182,6 +197,7 @@ target_link_libraries(${PROJECT_NAME}
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CEF_ROOT}
+    ${rapidjson_SOURCE_DIR}/include
 )
 
 # Copy CEF binaries and resources to output directory
