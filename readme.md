@@ -6,7 +6,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)
 ![Bun](https://img.shields.io/badge/Bun-latest-orange.svg)
 
-<img src="docs/resources/app.png">
+<img src="docs/resources/prev.png">
 
 **MikoLauncher** is a lightweight, cross-platform launcher built with C++ and CEF (Chromium Embedded Framework).  
 It provides a fast, modern interface for embedding web-based UIs into a native application with GPU-accelerated rendering.
