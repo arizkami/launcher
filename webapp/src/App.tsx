@@ -7,6 +7,8 @@ import GameDetail from './pages/gamedetail';
 import Library from './pages/library';
 import Store from './pages/store';
 import Settings from './pages/settings';
+import Downloads from './pages/downloads';
+import WuwaPage from './pages/games/wuwa';
 import { GlobalStateProvider } from './hooks/useGlobalState';
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
 import { MagicMouse } from 'magicmouse.ts';
@@ -52,6 +54,7 @@ const AppContent: React.FC = () => {
           <div className="flex-1 flex flex-col w-screen">
             <Header
               onSettingsClick={() => setCurrentPage('settings')}
+              onDownloadsClick={() => setCurrentPage('downloads')}
             />
 
             {/* Main Content Area */}
@@ -69,6 +72,7 @@ const AppContent: React.FC = () => {
                     <GameDetail
                       gameId={selectedGameId}
                       onBack={() => setCurrentPage('home')}
+                      onNavigateToDownloads={() => setCurrentPage('downloads')}
                     />
                   </motion.div>
                 )}
@@ -83,8 +87,13 @@ const AppContent: React.FC = () => {
                   >
                     <Home
                       onGameSelect={(gameId) => {
-                        setSelectedGameId(gameId);
-                        setCurrentPage('gamedetail');
+                        if (gameId === 959817) {
+                          // Navigate to Wuthering Waves page
+                          setCurrentPage('wuwa');
+                        } else {
+                          setSelectedGameId(gameId);
+                          setCurrentPage('gamedetail');
+                        }
                       }}
                       onNavigateToLibrary={() => setCurrentPage('library')}
                     />
@@ -130,6 +139,30 @@ const AppContent: React.FC = () => {
                     className="h-full"
                   >
                     <Settings onBack={() => setCurrentPage('home')} />
+                  </motion.div>
+                )}
+                {currentPage === 'wuwa' && (
+                  <motion.div
+                    key="wuwa"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="h-full"
+                  >
+                    <WuwaPage gameId={959817} onBack={() => setCurrentPage('home')} onNavigateToDownloads={() => setCurrentPage('downloads')} />
+                  </motion.div>
+                )}
+                {currentPage === 'downloads' && (
+                  <motion.div
+                    key="downloads"
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 1.05 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="h-full"
+                  >
+                    <Downloads onBack={() => setCurrentPage('home')} />
                   </motion.div>
                 )}
               </AnimatePresence>

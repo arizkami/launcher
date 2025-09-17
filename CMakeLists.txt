@@ -23,10 +23,20 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-# Configure SDL3 options
-set(SDL_SHARED ON CACHE BOOL "Build SDL3 as shared library")
-set(SDL_STATIC OFF CACHE BOOL "Build SDL3 as static library")
-set(SDL_TEST OFF CACHE BOOL "Build SDL3 test programs")
+# Fetch cpp-httplib
+FetchContent_Declare(
+  httplib
+  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+  GIT_TAG v0.15.3
+)
+
+# Configure cpp-httplib options
+set(HTTPLIB_COMPILE OFF CACHE BOOL "Use header-only httplib")
+set(HTTPLIB_REQUIRE_OPENSSL OFF CACHE BOOL "Disable OpenSSL requirement")
+set(HTTPLIB_REQUIRE_ZLIB OFF CACHE BOOL "Disable zlib requirement")
+set(HTTPLIB_REQUIRE_BROTLI OFF CACHE BOOL "Disable brotli requirement")
+
+# et(SDL_TEST OFF CACHE BOOL "Build SDL3 test programs")
 
 # Configure RapidJSON options
 set(RAPIDJSON_BUILD_DOC OFF CACHE BOOL "Build rapidjson documentation")
@@ -35,6 +45,7 @@ set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "Build rapidjson tests")
 
 FetchContent_MakeAvailable(SDL3)
 FetchContent_MakeAvailable(rapidjson)
+FetchContent_MakeAvailable(httplib)
 
 # Set CEF version and platform
 set(CEF_VERSION "138.0.27+g0b28f18+chromium-138.0.7204.158")
@@ -175,6 +186,7 @@ add_executable(${PROJECT_NAME} WIN32
     app/ResourceUtil.cpp
     app/internal/ipc.cpp
     app/internal/gamemanager.cpp
+    app/internal/downloadmanager.cpp
 )
 
 # Add Windows resource file
@@ -185,10 +197,11 @@ endif()
 # Set target properties using CEF macros
 SET_EXECUTABLE_TARGET_PROPERTIES(${PROJECT_NAME})
 
-# Link SDL3 and CEF libraries
+# Link SDL3, httplib and CEF libraries
 target_link_libraries(${PROJECT_NAME}
     SDL3::SDL3
     SDL3::SDL3-shared
+    httplib::httplib
     libcef_lib
     libcef_dll_wrapper
     ${CEF_STANDARD_LIBS}

@@ -17,11 +17,9 @@ interface Game {
 }
 
 interface LibraryProps {
-    onBack?: () => void;
     onGameSelect?: (gameId: number | string) => void;
 }
-//@ts-expect-error
-function Library({ onBack, onGameSelect }: LibraryProps) {
+function Library({ onGameSelect }: LibraryProps) {
     const [games, setGames] = useState<Game[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [filterType, setFilterType] = useState<'all' | 'exe' | 'steam' | 'epic'>('all');
@@ -77,12 +75,15 @@ function Library({ onBack, onGameSelect }: LibraryProps) {
     const handleRemoveGame = (gameId: string) => {
         setGames(games.filter(game => game.id !== gameId));
     };
+    //@ts-expect-error
+    const handleGameSelect = (gameId: string) => {
+        onGameSelect?.(gameId);
+    };
 
     const getGameIcon = (game: Game) => {
         switch (game.type) {
             case 'steam':
-                //@ts-expect-error
-                return <SteamLogo className="w-5 h-5" />;
+                return <SteamLogo />;
             case 'epic':
                 return <Gamepad2 className="w-5 h-5" />;
             default:
@@ -247,7 +248,7 @@ function Library({ onBack, onGameSelect }: LibraryProps) {
                                 onClick={() => handleAddGame('steam')}
                                 className="w-full flex items-center gap-3 p-4 rounded-lg bg-[var(--console-secondary)] hover:bg-[var(--console-accent)]/20 transition-colors text-left"
                             >
-                                <SteamLogo className="w-6 h-6" />
+                                <SteamLogo  />
                                 <div>
                                     <div className="font-semibold">Import from Steam</div>
                                     <div className="text-sm text-[var(--console-text-secondary)]">Scan Steam library</div>

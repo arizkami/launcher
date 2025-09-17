@@ -3,6 +3,7 @@
 #include "include/cef_browser.h"
 #include "include/cef_frame.h"
 #include "gamemanager.hpp"
+#include "downloadmanager.hpp"
 #include <string>
 #include <functional>
 #include <map>
@@ -29,8 +30,12 @@ namespace SimpleIPC {
         // Public access to GameManager
         launcher::GameManager* getGameManager() { return &launcher::GameManager::getInstance(); }
         
+        // Public access to DownloadManager
+        launcher::DownloadManager* getDownloadManager() { return &downloadManager_; }
+        
     private:
         std::map<std::string, MessageHandler> handlers_;
+        launcher::DownloadManager downloadManager_;
     };
     
     // Initialize IPC system with ExecuteJavaScript
@@ -46,4 +51,13 @@ namespace SimpleIPC {
     std::string HandleLaunchGame(const std::string& message);
     std::string HandleScanSteamLibrary(const std::string& message);
     std::string HandleScanEpicLibrary(const std::string& message);
+    
+    // DownloadManager IPC methods
+    std::string HandleStartDownload(const std::string& message);
+    std::string HandleCancelDownload(const std::string& message);
+    std::string HandleGetDownloadInfo(const std::string& message);
+    std::string HandleGetAllDownloads(const std::string& message);
+    
+    // System dialog methods
+    std::string HandleShowFolderDialog(const std::string& message);
 }

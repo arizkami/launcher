@@ -61,7 +61,7 @@ void SimpleApp::OnBeforeCommandLineProcessing(const CefString& process_type,
     command_line->AppendSwitch("disable-default-apps");
     
     // Disable web security for local development (if needed)
-    // command_line->AppendSwitch("disable-web-security");
+    command_line->AppendSwitch("disable-web-security");
     
     // Disable various Chrome features that could expose UI
     command_line->AppendSwitch("disable-background-mode");

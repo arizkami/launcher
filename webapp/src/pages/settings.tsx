@@ -21,43 +21,28 @@ function Settings({ onBack }: SettingsProps) {
         <div className="relative min-h-screen ">
             {/* Background gradient for transparency */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/40"></div>
-            
-            <div className="relative z-10 pt-20 px-8 pb-8">
+
+            <div className="relative z-10">
                 <div className="max-w-6xl mx-auto">
                     {/* Header */}
-                    <div className="mb-8">
-                        <div className="flex items-center space-x-4 mb-4">
-                            <button
-                                onClick={onBack}
-                                className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 border border-[var(--console-border)] transition-colors duration-200 group"
-                            >
-                                <ArrowLeft className="w-5 h-5 text-[var(--console-text-secondary)] group-hover:text-white" />
-                            </button>
-                            <div>
-                                <h1 className="text-4xl font-bold text-white">Settings</h1>
-                            </div>
-                        </div>
-                        <p className="text-[var(--console-text-secondary)] ml-14">Customize your launcher experience</p>
-                    </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    <div className="flex space-x-1 items-center h-screen">
                         {/* Sidebar */}
-                        <div className="lg:col-span-1">
-                            <div className="bg-black/40 backdrop-blur-sm rounded-xl border border-[var(--console-border)] p-4">
+                        <div className="lg:col-span-1 h-full">
+                            <div className="bg-black/40 w-64 h-full backdrop-blur-sm border-r pt-16 border-[var(--console-border)] p-4">
                                 <nav className="space-y-2">
                                     {settingsSections.map((section) => {
                                         const Icon = section.icon;
                                         const isActive = activeSection === section.id;
-                                        
+
                                         return (
                                             <button
                                                 key={section.id}
                                                 onClick={() => setActiveSection(section.id)}
-                                                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200 group ${
-                                                    isActive 
-                                                        ? 'bg-[var(--console-primary)] text-white' 
+                                                className={`w-full flex items-center justify-between p-3 rounded-lg transition-all duration-200 group ${isActive
+                                                        ? 'bg-[var(--console-primary)] text-white'
                                                         : 'hover:bg-white/5 text-[var(--console-text-secondary)] hover:text-white'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="flex items-center space-x-3">
                                                     <Icon className="w-5 h-5" />
@@ -72,8 +57,19 @@ function Settings({ onBack }: SettingsProps) {
                         </div>
 
                         {/* Content */}
-                        <div className="lg:col-span-3">
-                            <div className="bg-black/40 backdrop-blur-sm rounded-xl border border-[var(--console-border)] p-6">
+                        <div className="lg:col-span-3 h-full w-full">
+                            <div className="bg-black/40 backdrop-blur-sm w-full border-[var(--console-border)] p-6 pt-16">
+                                <div className="mb-8">
+                                    <div className="flex items-center space-x-4 mb-4 -ml-4">
+                                        <button
+                                            onClick={onBack}
+                                            className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors duration-200 group"
+                                        >
+                                            <ArrowLeft className="w-5 h-5 text-[var(--console-text-secondary)] group-hover:text-white" />
+                                        </button>
+                                    </div>
+                                </div>
+
                                 {activeSection === 'general' && (
                                     <div>
                                         <h2 className="text-2xl font-bold text-white mb-6">General Settings</h2>
