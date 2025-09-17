@@ -1,4 +1,4 @@
-# CEF Quickstart
+# MikoLauncher
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)
@@ -8,45 +8,71 @@
 
 <img src="docs/resources/app.png">
 
-CEF Quickstart is a lightweight, cross-platform webview application built with C++ and CEF (Chromium Embedded Framework). It provides a simple yet powerful interface for embedding web content within native applications.
+**MikoLauncher** is a lightweight, cross-platform launcher built with C++ and CEF (Chromium Embedded Framework).  
+It provides a fast, modern interface for embedding web-based UIs into a native application with GPU-accelerated rendering.
 
-## Features
+---
 
-- 🚀 **Fast Performance**: Native C++ backend with optimized web-based frontend
-- 🎨 **Modern UI**: Clean, responsive interface built with React.js and TypeScript
-- 🛠️ **CMake Integration**: Seamless project building and management
+## ⚡ Features
 
-## Architecture
+- 🚀 **High Performance**: Native C++ backend with CEF off-screen rendering (OSR)  
+- 🎨 **Modern WebUI**: React + TypeScript frontend, bundled with Vite  
+- 🖼️ **SDL3 Compositor**: GPU-based compositor for multiple WebViews and overlays  
+- 🛠️ **CMake + Bun Integration**: Streamlined build workflow for frontend & backend  
+- 📦 **Binary Resource Provider**: Embed web assets directly into the application  
+
+---
+
+## 🏗️ Architecture
 
 ```
-cef-quickstart/
-├── app/                    # C++ application core
-│   ├── main.cpp           # Application entry point
-│   ├── client.cpp         # WebView client implementation
-├── cef-quickstart/             # TypeScript frontend (React.js + Vite)
-│   ├── src/               # Frontend source code
-│   └── components/        # React.js components
-└── tools/                 # Build and utility tools
-    ├── build.ts           # CMake build automation
-    ├── clean.ts           # Project cleanup utility
-    └── utils/             # Conversion utilities
-```
 
-## Prerequisites
+MikoLauncher/
+├── main.cpp
+│
+├── cefview/              # CEF integration
+│   ├── app.cpp/.hpp      # CEF App, custom schemes
+│   ├── client.cpp/.hpp   # CEF Client + OSR render handler
+│
+├── compositor/           # SDL3-based GPU compositor
+│   ├── sdlcomp.cpp/.hpp
+│
+├── global/
+│   ├── config.hpp        # Runtime configuration
+│   ├── logger.cpp/.hpp   # Logging system
+│
+├── internal/             # Core services
+│   ├── downloadmanager.\* # Asset/game downloader
+│   ├── fs.\*              # Filesystem utilities
+│   ├── gamemanager.\*     # Game process manager
+│   ├── ipc.\*             # IPC bridge for Web ↔ Native
+│
+└── resources/
+├── binaryresourceprovider.\*  # Serve embedded web assets
+├── resourceutil.\*            # Pack/unpack helpers
+├── webapp.\*                  # WebUI entrypoint
 
-- **Windows 10/11** with MSVC (Visual Studio 2019 or later)
-- **CMake 3.25+**
-- **Bun.js** (latest version)
-- **Git** with submodule support
+````
 
-## Quick Start
+---
+
+## 🔧 Prerequisites
+
+- **Windows 10/11** with MSVC (Visual Studio 2019 or later)  
+- **CMake 3.25+**  
+- **Bun.js** (latest version)  
+- **Git** with submodule support  
+
+---
+
+## 🚀 Quick Start
 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/arizkami/cef-quickstart.git
-cd cef-quickstart
-```
+git clone https://github.com/arizkami/mikolauncher.git
+cd mikolauncher
+````
 
 ### 2. Install Dependencies
 
@@ -60,73 +86,52 @@ bun install
 # Build frontend
 bun run build
 
-# build all
+# Build backend (C++)
 bun run build:win
 ```
 
-### 4. Run CEF Quickstart
+### 4. Run
 
 ```bash
-.\build\Release\cef-quickstart.exe
+.\build\Release\MikoLauncher.exe
 ```
 
-## Development
+---
 
-### Available Scripts
+## 📜 Development
 
-- `bun run dev` - Start development server for frontend
-- `bun run build` - Build production frontend
-- `bun run preview` - Preview built frontend
-- `bun run build:cmake <project>` - Build specific CMake project
-- `bun run clean:cmake <project>` - Clean specific CMake project
-- `bun run buildtobin` - Convert HTML to C++ binary
-- `bun run iconconvert` - Convert PNG to ICO format
+### Scripts
 
-### Project Structure
+* `bun run dev` → Start frontend dev server
+* `bun run build` → Build production frontend
+* `bun run preview` → Preview production frontend
+* `bun run build:cmake <project>` → Build backend target
+* `bun run clean:cmake <project>` → Clean backend target
+* `bun run buildtobin` → Convert web assets into binary blobs
+* `bun run iconconvert` → Convert PNG to ICO
 
-#### Frontend (webapp/)
-Built with React.js, TypeScript, and Vite for fast development and optimal performance.
+---
 
-#### Backend (app/)
-C++ application using:
-- **Chromium Embedded Framework (CEF)** for rendering the frontend
-- **Binary Resource Provider** for embedded web assets
-- **Logger** for debugging and diagnostics
+## ⚙️ Tech Stack
 
-### Build Tools
+* **Frontend:** React, TypeScript, Vite
+* **Backend:** C++17, CEF (OSR mode), SDL3
+* **Build Tools:** CMake + Bun.js
+* **Resource Pipeline:** Embedded binary assets via custom provider
 
-Custom TypeScript build tools provide:
-- **Automated CMake builds** with proper configuration
-- **Project cleanup** with selective artifact removal
-- **Resource conversion** from web assets to C++ binaries
-- **Cross-platform compatibility** (Windows focus)
+---
 
-## Contributing
+## 📌 Notice
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+This project is an independent launcher experiment.
+It is **not affiliated with or endorsed by Hoyoverse, Kuro Games, or any other third-party company.**
 
-### Development Guidelines
+---
 
-- Use **Bun.js** for all JavaScript/TypeScript operations
-- Use **CMake** for all C++ builds (MSVC on Windows)
-- Follow existing code style and conventions
-- Add tests for new features
-- Update documentation as needed
-
-## License
+## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
-
-- Built with modern C++ and TypeScript
-- Powered by CMake and Bun.js
-- LSP integration for enhanced development experience
-- Chromium Embedded Framework for seamless web-native integration
-
 ---
-**CEF Quickstart** - WebView with native performance
+
+✨ **MikoLauncher** – a modern native launcher with web-based UI

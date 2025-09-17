@@ -31,11 +31,11 @@
 #include <fstream>
 
 // Local includes
-#include "config.hpp"
-#include "logger.hpp"
-#include "client.hpp"
-#include "app.hpp"
-#include "binaryresourceprovider.hpp"
+#include "global/config.hpp"
+#include "global/logger.hpp"
+#include "cefview/client.hpp"
+#include "cefview/app.hpp"
+#include "resources/binaryresourceprovider.hpp"
 
 // Global variables
 CefRefPtr<SimpleClient> g_client;

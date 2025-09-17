@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
-project(CefQuickstart)
+project(MikoLauncher)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -178,12 +178,12 @@ endif()
 # Add executable as Windows application (no console)
 add_executable(${PROJECT_NAME} WIN32
     app/main.cpp
-    app/logger.cpp
-    app/client.cpp
-    app/app.cpp
-    app/webapp.cpp
-    app/BinaryResourceProvider.cpp
-    app/ResourceUtil.cpp
+    app/global/logger.cpp
+    app/cefview/client.cpp
+    app/cefview/app.cpp
+    app/resources/webapp.cpp
+    app/resources/binaryresourceprovider.cpp
+    app/resources/resourceutil.cpp
     app/internal/ipc.cpp
     app/internal/gamemanager.cpp
     app/internal/downloadmanager.cpp

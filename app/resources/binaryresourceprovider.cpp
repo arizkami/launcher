@@ -3,7 +3,7 @@
 #include "include/cef_response.h"
 #include "include/cef_stream.h"
 #include "include/wrapper/cef_stream_resource_handler.h"
-#include "logger.hpp"
+#include "../global/logger.hpp"
 #include <string>
 
 BinaryResourceProvider::BinaryResourceProvider() {
