@@ -8,6 +8,21 @@ export interface ShowFolderDialogResponse {
   error?: string;
 }
 
+export interface DriveInfo {
+  letter: string;
+  label: string;
+  type: string;
+  totalSpace: number;
+  freeSpace: number;
+  usedSpace: number;
+}
+
+export interface GetDriveLettersResponse {
+  success: boolean;
+  drives?: DriveInfo[];
+  error?: string;
+}
+
 declare global {
   interface Window {
     cefQuery: (options: {
@@ -37,6 +52,42 @@ export class SystemAPI {
         onSuccess: (response: string) => {
           try {
             const result = JSON.parse(response) as ShowFolderDialogResponse;
+            resolve(result);
+          } catch (error) {
+            resolve({
+              success: false,
+              error: 'Failed to parse response'
+            });
+          }
+        },
+        onFailure: (error_code: number, error_message: string) => {
+          resolve({
+            success: false,
+            error: `CEF Error ${error_code}: ${error_message}`
+          });
+        }
+      });
+    });
+  }
+
+  /**
+   * Get available drive letters with their information
+   */
+  static async getDriveLetters(): Promise<GetDriveLettersResponse> {
+    return new Promise((resolve) => {
+      if (!window.cefQuery) {
+        resolve({
+          success: false,
+          error: 'CEF not available'
+        });
+        return;
+      }
+
+      window.cefQuery({
+        request: 'ipc_call:getDriveLetters:',
+        onSuccess: (response: string) => {
+          try {
+            const result = JSON.parse(response) as GetDriveLettersResponse;
             resolve(result);
           } catch (error) {
             resolve({

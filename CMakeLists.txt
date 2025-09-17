@@ -187,6 +187,7 @@ add_executable(${PROJECT_NAME} WIN32
     app/internal/ipc.cpp
     app/internal/gamemanager.cpp
     app/internal/downloadmanager.cpp
+    app/internal/fs.cpp
 )
 
 # Add Windows resource file

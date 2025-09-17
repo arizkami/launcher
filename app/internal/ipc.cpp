@@ -7,12 +7,6 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#include <commdlg.h>
-#include <shlobj.h>
-#endif
-
 namespace SimpleIPC {
     
     IPCHandler::IPCHandler() {
@@ -35,6 +29,7 @@ namespace SimpleIPC {
         
         // Register system dialog handlers
         RegisterHandler("showFolderDialog", HandleShowFolderDialog);
+        RegisterHandler("getDriveLetters", HandleGetDriveLetters);
     }
     
     std::string IPCHandler::HandleCall(const std::string& method, const std::string& message) {
@@ -465,74 +460,26 @@ namespace SimpleIPC {
     
     std::string HandleShowFolderDialog(const std::string& message) {
         try {
+            auto result = launcher::filesystem::ShowFolderDialog();
+            return launcher::filesystem::FolderDialogResultToJson(result);
+        } catch (const std::exception& e) {
             rapidjson::Document response;
             response.SetObject();
             auto& allocator = response.GetAllocator();
-            
-#ifdef _WIN32
-            // Initialize COM
-            HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-            
-            IFileOpenDialog* pFileOpen = nullptr;
-            
-            // Create the FileOpenDialog object
-            hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, 
-                                IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
-            
-            if (SUCCEEDED(hr)) {
-                // Set options to pick folders only
-                DWORD dwOptions;
-                hr = pFileOpen->GetOptions(&dwOptions);
-                if (SUCCEEDED(hr)) {
-                    hr = pFileOpen->SetOptions(dwOptions | FOS_PICKFOLDERS);
-                }
-                
-                // Show the dialog
-                if (SUCCEEDED(hr)) {
-                    hr = pFileOpen->Show(NULL);
-                    
-                    if (SUCCEEDED(hr)) {
-                        // Get the result
-                        IShellItem* pItem;
-                        hr = pFileOpen->GetResult(&pItem);
-                        if (SUCCEEDED(hr)) {
-                            PWSTR pszFilePath;
-                            hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
-                            
-                            if (SUCCEEDED(hr)) {
-                                // Convert wide string to regular string
-                                int size_needed = WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, NULL, 0, NULL, NULL);
-                                std::string folderPath(size_needed - 1, 0);
-                                WideCharToMultiByte(CP_UTF8, 0, pszFilePath, -1, &folderPath[0], size_needed, NULL, NULL);
-                                
-                                response.AddMember("success", true, allocator);
-                                response.AddMember("path", rapidjson::Value(folderPath.c_str(), allocator), allocator);
-                                
-                                CoTaskMemFree(pszFilePath);
-                            }
-                            pItem->Release();
-                        }
-                    } else if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
-                        // User cancelled the dialog
-                        response.AddMember("success", false, allocator);
-                        response.AddMember("cancelled", true, allocator);
-                    }
-                }
-                pFileOpen->Release();
-            }
-            
-            CoUninitialize();
-#else
-            // For non-Windows platforms, return an error
             response.AddMember("success", false, allocator);
-            response.AddMember("error", "Folder dialog not supported on this platform", allocator);
-#endif
+            response.AddMember("error", rapidjson::Value(e.what(), allocator), allocator);
             
             rapidjson::StringBuffer buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
             response.Accept(writer);
             return buffer.GetString();
-            
+        }
+    }
+
+    std::string HandleGetDriveLetters(const std::string& message) {
+        try {
+            auto drives = launcher::filesystem::GetDriveLetters();
+            return launcher::filesystem::DriveListToJson(drives);
         } catch (const std::exception& e) {
             rapidjson::Document response;
             response.SetObject();

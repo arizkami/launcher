@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Pause, Play, HardDrive } from 'lucide-react';
 import { WuwaFetcher, type WuwaGameData } from '../../lib/wuwafetch';
 import { DownloadAPI, type DownloadInfo } from '../../lib/downloadapi';
-import { SystemAPI } from '../../lib/systemapi';
+import { SystemAPI, type DriveInfo } from '../../lib/systemapi';
+import WuwaIcon from "../../assets/amimegames/wuwa.png"
 
 interface InstallDialogProps {
   isOpen: boolean;
@@ -44,6 +45,40 @@ const InstallDialog: React.FC<InstallDialogProps> = ({
   availableDisks = [],
   onDiskSelect
 }) => {
+  const [systemDrives, setSystemDrives] = useState<DriveInfo[]>([]);
+  const [loadingDrives, setLoadingDrives] = useState(false);
+
+  // Load system drives when component mounts
+  useEffect(() => {
+    const loadDrives = async () => {
+      if (isOpen && !isInstalling) {
+        setLoadingDrives(true);
+        try {
+          const result = await SystemAPI.getDriveLetters();
+          if (result.success && result.drives) {
+            setSystemDrives(result.drives);
+          } else {
+            console.error('Failed to load drives:', result.error);
+          }
+        } catch (error) {
+          console.error('Error loading drives:', error);
+        } finally {
+          setLoadingDrives(false);
+        }
+      }
+    };
+
+    loadDrives();
+  }, [isOpen, isInstalling]);
+
+  // Format bytes to human readable format
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
   const handleLocateGame = async () => {
     try {
       const result = await SystemAPI.showFolderDialog();
@@ -95,7 +130,7 @@ const InstallDialog: React.FC<InstallDialogProps> = ({
     name: "Wuthering Waves",
     publisher: "Kuro Games",
     version: "1.0.0",
-    icon: "https://via.placeholder.com/64",
+    icon: WuwaIcon,
     totalSize: wuwaGameData ? WuwaFetcher.formatBytes(wuwaGameData.totalSize) : "0 MB"
   };
 
@@ -112,7 +147,7 @@ const InstallDialog: React.FC<InstallDialogProps> = ({
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="w-[500px] bg-neutral-900 text-white rounded-xl shadow-lg p-6 space-y-6"
+            className="w-[500px] bg-neutral-900 border border-[#383838] text-white rounded-xl shadow-lg p-6 space-y-6"
           >
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -170,25 +205,68 @@ const InstallDialog: React.FC<InstallDialogProps> = ({
                 <p className="text-sm text-gray-300">Select Installation</p>
                 <p className="text-xs text-gray-500">Total Size: {gameInfo.totalSize}</p>
 
-                <div className="space-y-3">
-                  {availableDisks.map((disk) => (
-                    <button
-                      key={disk.id}
-                      onClick={() => onDiskSelect?.(disk.id)}
-                      className={`flex items-center justify-between w-full p-4 rounded-lg border transition-colors 
-                      ${
-                        selectedDisk === disk.id
-                          ? "bg-neutral-800 border-gray-500"
-                          : "bg-neutral-950 border-gray-700 hover:border-gray-500"
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <HardDrive className="w-5 h-5 text-gray-300" />
-                        <span className="text-sm">{disk.name}</span>
-                      </div>
-                      <span className="text-sm text-gray-400">{disk.free}</span>
-                    </button>
-                  ))}
+                <div className="max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 space-y-3">
+                  {loadingDrives ? (
+                    <div className="flex items-center justify-center p-4 text-gray-400">
+                      Loading drives...
+                    </div>
+                  ) : systemDrives.length > 0 ? (
+                    <div className="space-y-3">
+                      {systemDrives.map((drive) => (
+                        <button
+                          key={drive.letter}
+                          onClick={() => onDiskSelect?.(drive.letter)}
+                          className={`flex text-black items-center justify-between w-full p-4 rounded-lg border transition-colors 
+                          ${
+                            selectedDisk === drive.letter
+                              ? "bg-neutral-800 border-gray-500"
+                              : "bg-[#D9D9D9] border-gray-700 hover:border-gray-500"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <HardDrive className="w-5 h-5 text-black" />
+                            <div className="text-left">
+                              <div className="text-sm font-semibold">
+                                ({drive.letter}) {drive.label || 'Local Disk'}
+                              </div>
+                              <div className="text-xs text-black/60">
+                                {drive.type}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm text-black/80">
+                              {formatBytes(drive.freeSpace)} free
+                            </div>
+                            <div className="text-xs text-black/60">
+                              of {formatBytes(drive.totalSpace)}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {availableDisks.map((disk) => (
+                        <button
+                          key={disk.id}
+                          onClick={() => onDiskSelect?.(disk.id)}
+                          className={`flex items-center justify-between w-full p-4 rounded-lg border transition-colors 
+                          ${
+                            selectedDisk === disk.id
+                              ? "bg-neutral-800 border-gray-500"
+                              : "bg-neutral-950 border-gray-700 hover:border-gray-500"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <HardDrive className="w-5 h-5 text-gray-300" />
+                            <span className="text-sm">{disk.name}</span>
+                          </div>
+                          <span className="text-sm text-gray-400">{disk.free}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

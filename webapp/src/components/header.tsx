@@ -113,9 +113,7 @@ function Header({ onSettingsClick, onDownloadsClick }: HeaderProps) {
 
                 {/* Settings */}
                 <div 
-                    className={`h-full w-8 flex items-center justify-center hover:bg-[#1e1e1e] duration-200 cursor-pointer ${
-                        headerControls.settings.showSettingsMenu ? 'bg-[#1e1e1e]' : ''
-                    }`}
+                    className={`h-full w-8 flex items-center justify-center hover:bg-[#1e1e1e] duration-200 cursor-pointer`}
                     onClick={() => {
                         headerControls.settings.update({ showSettingsMenu: !headerControls.settings.showSettingsMenu });
                         if (onSettingsClick) onSettingsClick();

@@ -4,6 +4,7 @@
 #include "include/cef_frame.h"
 #include "gamemanager.hpp"
 #include "downloadmanager.hpp"
+#include "fs.hpp"
 #include <string>
 #include <functional>
 #include <map>
@@ -60,4 +61,5 @@ namespace SimpleIPC {
     
     // System dialog methods
     std::string HandleShowFolderDialog(const std::string& message);
+    std::string HandleGetDriveLetters(const std::string& message);
 }
