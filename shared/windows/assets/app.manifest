@@ -6,7 +6,7 @@
     name="CefQuickstart"
     type="win32"
   />
-  <description>CEF Quickstart - C++ Native Webview with CEF</description>
+  <description>MikoLauncher - Open-Source Handheld Launcher Platform</description>
   
   <!-- DPI Awareness -->
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
