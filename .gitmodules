@@ -4,3 +4,9 @@
 [submodule "engines/wuwa"]
 	path = engines/wuwa
 	url = https://github.com/yuhkix/wuwa-downloader
+[submodule "helper/crashpad"]
+	path = helper/crashpad
+	url = https://github.com/backtrace-labs/crashpad
+[submodule "helper/speedtest"]
+	path = helper/speedtest
+	url = https://github.com/mikofure/speedtest-cli
