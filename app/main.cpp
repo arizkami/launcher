@@ -27,6 +27,13 @@
 #include "include/cef_crash_util.h"
 #include "include/wrapper/cef_helpers.h"
 #include "include/cef_image.h"
+
+// Crashpad includes
+#include <client/crash_report_database.h>
+#include <client/settings.h>
+#include <client/crashpad_client.h>
+#include <client/crashpad_info.h>
+
 #include <filesystem>
 #include <fstream>
 
@@ -44,8 +51,52 @@ CefRefPtr<CefBrowser> g_browser;
 bool g_running = true;
 bool g_is_fullscreen = true;
 
-// Global icon handle for reuse
+// Global icon handle
 static HICON g_app_icon = NULL;
+
+// Crashpad database
+std::unique_ptr<crashpad::CrashReportDatabase> g_crash_database;
+
+// Initialize Crashpad crash handler
+static bool InitializeCrashpad(const std::string& url, const std::wstring& handler_path, const std::wstring& db_path) {
+    using namespace crashpad;
+
+    std::map<std::string, std::string> annotations;
+    std::vector<std::string> arguments;
+
+    // Set required annotations
+    annotations["format"] = "minidump";
+    annotations["app_version"] = "1.0.0";
+    annotations["component"] = "main_process";
+
+    // Disable rate limiting for development
+    arguments.push_back("--no-rate-limit");
+
+    base::FilePath db(db_path);
+    base::FilePath handler(handler_path);
+
+    g_crash_database = crashpad::CrashReportDatabase::Initialize(db);
+
+    if (g_crash_database == nullptr || g_crash_database->GetSettings() == nullptr) {
+        Logger::LogMessage("Failed to initialize Crashpad database");
+        return false;
+    }
+
+    // Enable automated uploads
+    g_crash_database->GetSettings()->SetUploadsEnabled(true);
+
+    bool success = CrashpadClient{}.StartHandler(
+        handler, db, db, url, annotations, arguments, false, false, {}
+    );
+
+    if (success) {
+        Logger::LogMessage("Crashpad initialized successfully");
+    } else {
+        Logger::LogMessage("Failed to start Crashpad handler");
+    }
+
+    return success;
+}
 
 // Load application icon once and cache it
 HICON LoadApplicationIcon() {
@@ -266,6 +317,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     
     // Set Application User Model ID early in the process
     SetApplicationUserModelID(NULL);
+    
+    // Initialize Crashpad crash reporting
+    std::string crash_url("https://crashreport.mikofure.org/submit");
+    
+    // Determine handler path based on build configuration
+    std::wstring handler_path;
+#ifdef _DEBUG
+    handler_path = L"build/Debug/crashpad_handler.exe";
+#else
+    handler_path = L"build/Release/crashpad_handler.exe";
+#endif
+    
+    std::wstring db_path(L"./crashpad_db");
+    
+    InitializeCrashpad(crash_url, handler_path, db_path);
     
     void* sandbox_info = nullptr;
     CefMainArgs main_args(GetModuleHandle(nullptr));

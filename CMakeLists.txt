@@ -4,6 +4,26 @@ project(MikoLauncher)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Set runtime library to dynamic for all targets and disable warnings as errors for MSVC
+if(MSVC)
+    # Set runtime library to static for all targets to avoid conflicts
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    
+    # Remove /WX flag if present and add /W3 for reasonable warning level
+    string(REPLACE "/WX" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REPLACE "/WX" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    string(REPLACE "/WX" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    string(REPLACE "/WX" "" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+    string(REPLACE "/WX" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+    string(REPLACE "/WX" "" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W3")
+    
+    # Explicitly disable warnings as errors
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /WX-")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /WX-")
+endif()
+
 # Include FetchContent for downloading dependencies
 include(FetchContent)
 
@@ -46,6 +66,40 @@ set(RAPIDJSON_BUILD_TESTS OFF CACHE BOOL "Build rapidjson tests")
 FetchContent_MakeAvailable(SDL3)
 FetchContent_MakeAvailable(rapidjson)
 FetchContent_MakeAvailable(httplib)
+
+# Add Crashpad subdirectory with warning suppression
+if(MSVC)
+    # Temporarily disable specific warnings for Crashpad compilation
+    set(CMAKE_CXX_FLAGS_BACKUP "${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS_BACKUP "${CMAKE_C_FLAGS}")
+    
+    # Disable specific warnings that cause issues in Crashpad
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4244 /wd4267 /wd4996 /wd4005 /wd4018")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4244 /wd4267 /wd4996 /wd4005 /wd4018")
+endif()
+
+add_subdirectory(helper/crashpad)
+
+if(MSVC)
+    # Restore original flags after Crashpad
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_BACKUP}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS_BACKUP}")
+endif()
+
+# Configure Crashpad handler output directory
+if(TARGET handler)
+    set_target_properties(handler PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
+        OUTPUT_NAME "crashpad_handler"
+    )
+endif()
+
+if(TARGET handler_console)
+    set_target_properties(handler_console PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>"
+        OUTPUT_NAME "crashpad_handler_console"
+    )
+endif()
 
 # Set CEF version and platform
 set(CEF_VERSION "138.0.27+g0b28f18+chromium-138.0.7204.158")
@@ -190,6 +244,17 @@ add_executable(${PROJECT_NAME} WIN32
     app/internal/fs.cpp
 )
 
+# Set target properties to disable warnings as errors specifically for this target
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE 
+        /WX-  # Disable warnings as errors
+        /wd4005  # Disable macro redefinition warnings
+        /wd4244  # Disable conversion warnings
+        /wd4267  # Disable size_t conversion warnings
+        /wd4996  # Disable deprecated function warnings
+    )
+endif()
+
 # Add Windows resource file
 if(WIN32)
     target_sources(${PROJECT_NAME} PRIVATE shared/windows/assets/app.rc)
@@ -198,20 +263,61 @@ endif()
 # Set target properties using CEF macros
 SET_EXECUTABLE_TARGET_PROPERTIES(${PROJECT_NAME})
 
-# Link SDL3, httplib and CEF libraries
-target_link_libraries(${PROJECT_NAME}
+# Link SDL3, httplib, CEF and Crashpad libraries
+target_link_libraries(${PROJECT_NAME} PRIVATE
     SDL3::SDL3
     SDL3::SDL3-shared
     httplib::httplib
     libcef_lib
     libcef_dll_wrapper
     ${CEF_STANDARD_LIBS}
+    client
+    util
+    # Windows system libraries needed for Crashpad
+    advapi32
+    kernel32
+    rpcrt4
+    version
+    wininet
+    ws2_32
+    dbghelp
+    powrprof
+    setupapi
+    wtsapi32
+    userenv
+    netapi32
+    psapi
+    iphlpapi
+    comctl32
+    comdlg32
+    gdi32
+    ole32
+    oleaut32
+    shell32
+    shlwapi
+    user32
+    uuid
+    winspool
+    winmm
+    crypt32
+    secur32
+    bcrypt
+    ntdll
 )
+
+# Handle multiply defined symbols more selectively
+if(MSVC)
+    target_link_options(${PROJECT_NAME} PRIVATE
+        /IGNORE:4006  # Ignore multiply defined symbols warning
+        /IGNORE:4088  # Ignore image being created due to /FORCE option
+    )
+endif()
 
 # Include directories
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CEF_ROOT}
     ${rapidjson_SOURCE_DIR}/include
+    helper/crashpad
 )
 
 # Copy CEF binaries and resources to output directory
